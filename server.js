@@ -1,20 +1,20 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
 const path = require('path');
 
-// إعداد Express
 const app = express();
 const port = 3000;
 
-// إعداد Telegram Bot
-const token = '7902984772:AAE9oYZ58ri5xBGrna2MIOX-pKBtjzmjeX4'; // ⚠️ استبدل هذا بـ Token الخاص بك
+// استبدل هذا بالتوكن الجديد من @BotFather
+const token = '7854414810:AAGyuC8sZ-zHLOdNHl81GScSPYsCOesNok8'; 
 const bot = new TelegramBot(token, { polling: true });
 
-// متغير لتخزين حالة التوجيه
+// كلمة سر للتحكم في API
+const API_SECRET = "MY_STRONG_SECRET";
+
 let shouldRedirect = false;
 
-// صفحة الانتظار (Frontend)
+// Frontend
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -23,25 +23,30 @@ app.get('/', (req, res) => {
 app.get('/api/check-redirect', (req, res) => {
     res.json({
         redirect: shouldRedirect,
-        redirectUrl: 'traitement.html' // الصفحة الهدف
+        redirectUrl: 'traitement.html'
     });
 });
 
-// API لتشغيل التوجيه (يمكن استدعاؤها من بوت Telegram)
+// API محمي بكلمة سر
 app.get('/api/trigger-redirect', (req, res) => {
+    if (req.query.secret !== API_SECRET) {
+        return res.status(403).send("غير مسموح!");
+    }
     shouldRedirect = true;
-    res.send('✅ تم تفعيل التوجيه!');
+    res.send('✅ تم التوجيه!');
 });
 
-// Telegram Bot Command
+// أمر البوت مع التحقق
 bot.onText(/\/redirect/, (msg) => {
     const chatId = msg.chat.id;
-    axios.get('http://localhost:3000/api/trigger-redirect') // استدعاء API المحلي
-        .then(() => bot.sendMessage(chatId, '🚀 تم توجيه المستخدم!'))
+    const apiUrl = `http://your-server.com/api/trigger-redirect?secret=${API_SECRET}`;
+
+    bot.sendMessage(chatId, "جاري التوجيه...")
+        .then(() => fetch(apiUrl))
+        .then(() => bot.sendMessage(chatId, '🚀 تم التوجيه!'))
         .catch(() => bot.sendMessage(chatId, '❌ فشل في التوجيه!'));
 });
 
-// تشغيل الخادم
 app.listen(port, () => {
     console.log(`✅ الخادم يعمل على http://localhost:${port}`);
 });
